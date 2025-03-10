@@ -1,14 +1,14 @@
 package frc.robot.Command;
 
-import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Subsystem.Drivetrain;
 
 public class Driver extends Command{
     private final Drivetrain drivetrain;
-    private final XboxController controller;
+    private final Joystick controller;
 
-    public Driver(Drivetrain drivetrain, XboxController controller){
+    public Driver(Drivetrain drivetrain, Joystick controller){
         this.drivetrain = drivetrain;
         this.controller = controller;
 
@@ -17,8 +17,8 @@ public class Driver extends Command{
 
     @Override
     public void execute(){
-        double speed = -controller.getLeftY();
-        double turn = controller.getLeftX();
+        double speed = -controller.getY();
+        double turn = controller.getX();
 
         drivetrain.drive(speed, turn);
     }

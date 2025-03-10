@@ -1,11 +1,11 @@
 package frc.robot.Controls;
 
-import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.Joystick;
 import frc.robot.Command.Driver;
 import frc.robot.Subsystem.Drivetrain;
 
 public class RobotContainer {
-    private final XboxController controller = new XboxController(0);
+    private final Joystick controller = new Joystick(0);
     private final Drivetrain drivetrain = new Drivetrain();
     private final Driver driver = new Driver(drivetrain, controller);
 
