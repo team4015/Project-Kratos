@@ -28,7 +28,7 @@ public class Drivetrain extends SubsystemBase {
     }
 
     public void stop(){
-        drive.tankDrive(0, 0);
+        drive.arcadeDrive(0, 0);
     }
 
 }
