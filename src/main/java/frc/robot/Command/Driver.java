@@ -16,6 +16,11 @@ public class Driver extends Command{
     }
 
     @Override
+    public void initialize(){
+        drivetrain.resetEncoder();
+    }
+
+    @Override
     public void execute(){
         double speed = -controller.getY();
         double turn = controller.getX();
