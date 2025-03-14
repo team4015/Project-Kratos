@@ -17,14 +17,25 @@ public class Drivetrain extends SubsystemBase {
         rightmotor = new VictorSP(RightMotorChannel);
         leftmotor = new VictorSP(LeftMotorChannel);
 
-        rightmotor.setInverted(false);
+        rightmotor.setInverted(true);
         leftmotor.setInverted(false);
 
         drive = new DifferentialDrive(leftmotor, rightmotor);
+        drive.setSafetyEnabled(true);
+        drive.setExpiration(0.1); 
     }
 
     public void drive(double speed, double turn){
+        speed = applyDeadband(speed, 0.02);
+        turn = applyDeadband(turn, 0.02);
         drive.arcadeDrive(speed, turn);
+    }
+
+    private double applyDeadband(double value, double deadband){
+        if(Math.abs(value) < deadband){
+            return 0.0;
+        }
+        return value;
     }
 
     public void stop(){

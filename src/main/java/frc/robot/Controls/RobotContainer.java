@@ -5,7 +5,8 @@ import frc.robot.Command.Driver;
 import frc.robot.Subsystem.Drivetrain;
 
 public class RobotContainer {
-    private final Joystick controller = new Joystick(0);
+    private static final int JOYSTICK_PORT = 0;
+    private final Joystick controller = new Joystick(JOYSTICK_PORT);
     private final Drivetrain drivetrain = new Drivetrain();
     private final Driver driver = new Driver(drivetrain, controller);
 
@@ -15,6 +16,10 @@ public class RobotContainer {
 
     private void setConfigurations(){
         drivetrain.setDefaultCommand(driver);
+    }
+
+    public void disable(){
+        drivetrain.stop();
     }
     
 }
