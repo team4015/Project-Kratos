@@ -1,6 +1,11 @@
 package frc.robot.Subsystem;
 
+import org.photonvision.PhotonCamera;
+
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.VictorSP;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -15,6 +20,7 @@ public class Drivetrain extends SubsystemBase {
     private static final int RightEncoderChannelA = 2; //subject to change
     private static final int RightEncoderChannelB = 3; //subject to change
 
+    private static final int JoystickChannel = 0;
 
     private VictorSP rightmotor;
     private VictorSP leftmotor;
@@ -23,6 +29,17 @@ public class Drivetrain extends SubsystemBase {
     private Encoder rightEncoder;
 
     private DifferentialDrive drive;
+    private PhotonCamera camera;
+    private ADXRS450_Gyro gyro;
+    private Joystick controller;
+
+    private PIDController driveController;
+    private PIDController turnController;
+
+
+    private double targetYaw = 0;
+    private double targetDistance = 1.0;
+
 
     public Drivetrain(){
         rightmotor = new VictorSP(RightMotorChannel);
@@ -32,6 +49,9 @@ public class Drivetrain extends SubsystemBase {
         leftmotor.setInverted(false);
 
         drive = new DifferentialDrive(leftmotor, rightmotor);
+        gyro = new ADXRS450_Gyro();
+
+        controller = new Joystick(JoystickChannel);
 
         drive.setSafetyEnabled(true);
         drive.setExpiration(0.1); 
@@ -44,6 +64,10 @@ public class Drivetrain extends SubsystemBase {
 
         leftEncoder.reset();
         rightEncoder.reset();
+
+        gyro.calibrate();
+        gyro.reset();
+
     }
 
     public void drive(double speed, double turn){
@@ -63,6 +87,13 @@ public class Drivetrain extends SubsystemBase {
         drive.arcadeDrive(0, 0);
     }
 
+    public void resetGyro(){
+        gyro.reset();
+    }
+
+    public double getGyroAngle(){
+        return gyro.getAngle();
+    }
     public void resetEncoder(){
         leftEncoder.reset();
         rightEncoder.reset();
@@ -84,11 +115,16 @@ public class Drivetrain extends SubsystemBase {
         return rightEncoder.getRate();
     }
 
+
     @Override
     public void periodic(){
         SmartDashboard.putNumber("Left Encoder Distance", getLeftEncoderDistance());
         SmartDashboard.putNumber("Right Encoder Distance", getRightEncoderDistance());
         SmartDashboard.putNumber("Left Encoder Rate", getLeftEncoderRate());
         SmartDashboard.putNumber("Right Encoder Rate", getRightEncoderRate());
+
+        SmartDashboard.putNumber("Gyro Angle: ", getGyroAngle());
     }
+
+
 }
