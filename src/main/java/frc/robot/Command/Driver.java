@@ -8,9 +8,17 @@ public class Driver extends Command{
     private final Drivetrain drivetrain;
     private final Joystick controller;
 
-    public Driver(Drivetrain drivetrain, Joystick controller){
+    private final int fieldOrientedButton;
+
+    private final int resetOrientationButton;
+
+    private boolean squareInput = true;
+
+    public Driver(Drivetrain drivetrain, Joystick controller, int fieldOrientedButton, int resetOrientationButton){
         this.drivetrain = drivetrain;
         this.controller = controller;
+        this.fieldOrientedButton = fieldOrientedButton;
+        this.resetOrientationButton = resetOrientationButton;
 
         addRequirements(drivetrain);
     }
@@ -18,6 +26,7 @@ public class Driver extends Command{
     @Override
     public void initialize(){
         drivetrain.resetEncoder();
+        drivetrain.resetGyro();
     }
 
     @Override
@@ -25,7 +34,25 @@ public class Driver extends Command{
         double speed = -controller.getY();
         double turn = controller.getX();
 
-        drivetrain.drive(speed, turn);
+        if(controller.getRawButton(fieldOrientedButton)){
+            drivetrain.toggleFieldOriented();
+        }
+
+        if(controller.getRawButton(resetOrientationButton)){
+            drivetrain.resetFieldOrientation();
+        }
+
+        if(controller.getRawButton(3)){
+            squareInput = !squareInput;
+        }
+
+        if(drivetrain.isFieldOriented()){
+            drivetrain.fieldOrientedDrive(speed, turn, squareInput);
+        }
+        else{
+            drivetrain.drive(speed, turn, squareInput);
+        }
+
     }
 
     @Override
