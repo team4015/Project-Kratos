@@ -8,7 +8,7 @@ public class RobotContainer {
     private static final int JOYSTICK_PORT = 0;
     private final Joystick controller = new Joystick(JOYSTICK_PORT);
     private final Drivetrain drivetrain = new Drivetrain();
-    private final Driver driver = new Driver(drivetrain, controller);
+    private final Driver driver = new Driver(drivetrain, controller, 1, 2);
 
     public RobotContainer(){
         setConfigurations();
@@ -21,5 +21,4 @@ public class RobotContainer {
     public void disable(){
         drivetrain.stop();
     }
-    
 }

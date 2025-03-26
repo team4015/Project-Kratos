@@ -1,15 +1,18 @@
 package frc.robot.Subsystem;
 
-import org.photonvision.PhotonCamera;
-
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.VictorSP;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
 
 public class Drivetrain extends SubsystemBase {
     private static final int LeftMotorChannel = 0;
@@ -20,8 +23,6 @@ public class Drivetrain extends SubsystemBase {
     private static final int RightEncoderChannelA = 2; //subject to change
     private static final int RightEncoderChannelB = 3; //subject to change
 
-    private static final int JoystickChannel = 0;
-
     private VictorSP rightmotor;
     private VictorSP leftmotor;
 
@@ -29,17 +30,16 @@ public class Drivetrain extends SubsystemBase {
     private Encoder rightEncoder;
 
     private DifferentialDrive drive;
-    private PhotonCamera camera;
     private ADXRS450_Gyro gyro;
-    private Joystick controller;
 
-    private PIDController driveController;
-    private PIDController turnController;
+    private Rotation2d gyroOffset;
+    private boolean fieldOriented;
 
+    private final SlewRateLimiter speedLimiter;
+    private final SlewRateLimiter turnLimiter;
 
-    private double targetYaw = 0;
-    private double targetDistance = 1.0;
-
+    private final DifferentialDriveOdometry odometry;
+    private final Field2d field;
 
     public Drivetrain(){
         rightmotor = new VictorSP(RightMotorChannel);
@@ -50,8 +50,6 @@ public class Drivetrain extends SubsystemBase {
 
         drive = new DifferentialDrive(leftmotor, rightmotor);
         gyro = new ADXRS450_Gyro();
-
-        controller = new Joystick(JoystickChannel);
 
         drive.setSafetyEnabled(true);
         drive.setExpiration(0.1); 
@@ -65,15 +63,62 @@ public class Drivetrain extends SubsystemBase {
         leftEncoder.reset();
         rightEncoder.reset();
 
+        field = new Field2d();
+        gyroOffset = new Rotation2d();
+        fieldOriented = false;
+
+        odometry = new DifferentialDriveOdometry(getGyroRotation2d(), 0, 0);
+
+
+        speedLimiter = new SlewRateLimiter(3.0);
+        turnLimiter = new SlewRateLimiter(3.0);
+
         gyro.calibrate();
         gyro.reset();
 
     }
 
-    public void drive(double speed, double turn){
+    public void drive(double speed, double turn, boolean squareInput){
         speed = applyDeadband(speed, 0.02);
         turn = applyDeadband(turn, 0.02);
-        drive.arcadeDrive(speed, turn);
+
+        speed = speedLimiter.calculate(speed);
+        turn = turnLimiter.calculate(turn);
+
+        drive.arcadeDrive(speed, turn, squareInput);
+    }
+
+    public void fieldOrientedDrive(double xSpeed, double ySpeed, boolean squareInput){
+        if(!fieldOriented){
+
+            drive(xSpeed, ySpeed, squareInput);
+            return;
+        }
+
+        Rotation2d gyroAngle = getGyroRotation2d();
+
+        var robotSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, 0, gyroAngle);
+
+        double speed = robotSpeeds.vxMetersPerSecond;
+        double turn = robotSpeeds.vyMetersPerSecond;
+
+        drive(speed, turn, squareInput);
+    }
+
+    public void toggleFieldOriented(){
+        fieldOriented = !fieldOriented;
+
+        if(fieldOriented){
+            gyroOffset = getGyroRotation2d();
+        }
+    }
+
+    public void resetFieldOrientation(){
+        gyroOffset = getGyroRotation2d();
+    }
+
+    public boolean isFieldOriented() {
+        return fieldOriented;
     }
 
     private double applyDeadband(double value, double deadband){
@@ -83,20 +128,37 @@ public class Drivetrain extends SubsystemBase {
         return value;
     }
 
-    public void stop(){
-        drive.arcadeDrive(0, 0);
-    }
-
     public void resetGyro(){
         gyro.reset();
+        gyroOffset = getGyroRotation2d();
     }
 
     public double getGyroAngle(){
         return gyro.getAngle();
     }
+
+    public Rotation2d getGyroRotation2d(){
+        return Rotation2d.fromDegrees(-gyro.getAngle()).minus(gyroOffset);
+    }
+
+    public Pose2d getPose(){
+        return odometry.getPoseMeters();
+    }
+
     public void resetEncoder(){
         leftEncoder.reset();
         rightEncoder.reset();
+    }
+
+    public void resetOdometry(Pose2d pose){
+        gyro.reset();
+        odometry.resetPosition(getGyroRotation2d(), 0, 0, pose);
+    }
+
+    public void stop(){
+        speedLimiter.reset(0);
+        turnLimiter.reset(0);
+        drive.arcadeDrive(0, 0);
     }
 
     public double getLeftEncoderDistance(){
@@ -115,16 +177,20 @@ public class Drivetrain extends SubsystemBase {
         return rightEncoder.getRate();
     }
 
-
     @Override
     public void periodic(){
+        odometry.update(getGyroRotation2d(), 0, 0);
+        
+        field.setRobotPose(getPose());
+
         SmartDashboard.putNumber("Left Encoder Distance", getLeftEncoderDistance());
         SmartDashboard.putNumber("Right Encoder Distance", getRightEncoderDistance());
         SmartDashboard.putNumber("Left Encoder Rate", getLeftEncoderRate());
         SmartDashboard.putNumber("Right Encoder Rate", getRightEncoderRate());
 
         SmartDashboard.putNumber("Gyro Angle: ", getGyroAngle());
+        SmartDashboard.putData("Field", field);
+        SmartDashboard.putBoolean("Field Oriented", fieldOriented);
+        SmartDashboard.putString("Robot Pose", getPose().toString());
     }
-
-
 }
